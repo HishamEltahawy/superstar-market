@@ -15,4 +15,4 @@ python manage.py migrate
 python manage.py createsuperuser --noinput || true
 
 # Start the application
-exec "$@"
+exec python manage.py runserver 0.0.0.0:8000

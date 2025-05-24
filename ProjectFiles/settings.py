@@ -126,7 +126,7 @@ WSGI_APPLICATION = 'ProjectFiles.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql.psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'electroegydb',
         'USER': 'masteruser',
         'PASSWORD': 'hhh_hhh123',
