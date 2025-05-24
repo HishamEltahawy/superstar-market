@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -42,4 +42,5 @@ RUN mkdir -p media static
 # Run entrypoint script
 ENTRYPOINT ["./entrypoint.sh"]
 
-
+RUN python3 manage.py makemigrations
+RUN python3 manage.py migrate

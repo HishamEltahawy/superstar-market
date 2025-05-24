@@ -25,7 +25,7 @@ decorator==5.2.1
 defusedxml==0.7.1
 distlib==0.3.9
 dj-database-url==2.3.0
-Django==5.1.6
+django==5.1.6
 django-allauth==65.7.0
 django-database-url==1.0.3
 django-filter==25.1
@@ -86,7 +86,6 @@ pycryptodome==3.21.0
 Pygments==2.19.1
 PyJWT==2.10.1
 pyparsing==3.2.1
-pypiwin32==223
 PySocks==1.7.1
 pytesseract==0.3.13
 python-dateutil==2.9.0.post0
@@ -113,13 +112,11 @@ SQLAlchemy==2.0.40
 sqlparse==0.5.3
 srt==3.5.3
 stack-data==0.6.3
-tkcalendar==1.6.1
 tornado==6.4.2
 tqdm==4.67.1
 traitlets==5.14.3
 trio==0.28.0
 trio-websocket==0.11.1
-ttkthemes==3.2.2
 typing_extensions==4.12.2
 tzdata==2025.2
 urllib3==2.3.0
