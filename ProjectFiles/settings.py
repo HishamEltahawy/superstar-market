@@ -1,7 +1,6 @@
 from datetime import timedelta
 from pathlib import Path
 import os
-from decouple import config
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -10,14 +9,12 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ENCRYPTION_KEY = config('ENCRYPTION_KEY', Fernet.generate_key())
-DEBUG = config("DEBUG")
-# ALLOWED_HOSTS=['ec2-16-170-246-198.eu-north-1.compute.amazonaws.com', '16.170.246.198']
-ALLOWED_HOSTS=['localhost',]
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key())
+DEBUG = os.environ.get("DEBUG")
+ALLOWED_HOSTS= os.environ.get("ALLOWED_HOSTS", "").split(",") if os.environ.get("ALLOWED_HOSTS") else []
 SECRET_KEY = ENCRYPTION_KEY
 
-
-# DEBUG = True
+# DEBUG = True  
 # ALLOWED_HOSTS = ['localhost']
 
 # Email Configuration
