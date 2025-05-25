@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12.2-slim-bullseye
 
 WORKDIR /app
 
@@ -44,3 +44,4 @@ ENTRYPOINT ["./entrypoint.sh"]
 
 RUN python3 manage.py makemigrations
 RUN python3 manage.py migrate
+CMD ["gunicorn", "ProjectFiles.wsgi:application", "--bind", "0.0.0.0:8000"]

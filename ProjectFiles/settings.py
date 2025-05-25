@@ -1,6 +1,7 @@
 from datetime import timedelta
 from pathlib import Path
 import os
+from decouple import config
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
 
@@ -9,11 +10,12 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key())
-
-DEBUG = os.environ.get("DEBUG")
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
+ENCRYPTION_KEY = config('ENCRYPTION_KEY', Fernet.generate_key())
+DEBUG = config("DEBUG")
+# ALLOWED_HOSTS=['ec2-16-170-246-198.eu-north-1.compute.amazonaws.com', '16.170.246.198']
+ALLOWED_HOSTS=['localhost',]
 SECRET_KEY = ENCRYPTION_KEY
+
 
 # DEBUG = True
 # ALLOWED_HOSTS = ['localhost']
@@ -130,7 +132,7 @@ DATABASES = {
         'NAME': 'electroegydb',
         'USER': 'masteruser',
         'PASSWORD': 'hhh_hhh123',
-        'HOST': 'database-1.cxuwcmgeofwr.eu-north-1.rds.amazonaws.com',
+        'HOST': os.environ.get("PASSWORD_DB", ""),
         'PORT': '5432',
     }
 }

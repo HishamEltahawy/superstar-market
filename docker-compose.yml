@@ -59,6 +59,7 @@ services:
       - app-network
 
   nginx:
+    container_name: nginx
     image: nginx:stable-alpine
     ports:
       - "8080:80"
