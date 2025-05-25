@@ -26,7 +26,7 @@ decouple==0.0.7
 defusedxml==0.7.1
 distlib==0.3.9
 dj-database-url==2.3.0
-njango==5.1.6
+django==5.1.6
 django-allauth==65.7.0
 django-database-url==1.0.3
 django-filter==25.1
