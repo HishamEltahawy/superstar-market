@@ -42,4 +42,3 @@ RUN mkdir -p media static
 # Run entrypoint script
 ENTRYPOINT ["./entrypoint.sh"]
 
-# CMD ["gunicorn", "ProjectFiles.wsgi:application", "--bind", "0.0.0.0:8000"]

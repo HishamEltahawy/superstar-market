@@ -11,11 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key())
 DEBUG = os.environ.get("DEBUG")
-ALLOWED_HOSTS= os.environ.get("ALLOWED_HOSTS", "").split(",") if os.environ.get("ALLOWED_HOSTS") else []
+ALLOWED_HOSTS= os.environ.get("ALLOWED_HOSTS", "").split(",") 
 SECRET_KEY = ENCRYPTION_KEY
 
-# DEBUG = True  
-# ALLOWED_HOSTS = ['localhost']
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -126,11 +124,12 @@ WSGI_APPLICATION = 'ProjectFiles.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'electroegydb',
-        'USER': 'masteruser',
-        'PASSWORD': 'hhh_hhh123',
-        'HOST': os.environ.get("PASSWORD_DB", ""),
-        'PORT': '5432',
+        'NAME': os.environ.get("DB_NAME"),
+        'USER': os.environ.get("DB_USER"),
+        'PASSWORD': os.environ.get("DB_PASSWORD"),
+        'HOST': os.environ.get("DB_HOST"),
+        'PORT': os.environ.get("DB_PORT", 5432),
+        
     }
 }
 
