@@ -11,6 +11,10 @@ echo "Redis is ready!"
 echo "Applying database migrations..."
 python manage.py migrate
 
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
 # Create superuser if needed (will skip if exists)
 python manage.py createsuperuser --noinput || true
 

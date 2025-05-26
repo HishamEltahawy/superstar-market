@@ -10,8 +10,8 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key())
-DEBUG = os.environ.get("DEBUG")
-ALLOWED_HOSTS= os.environ.get("ALLOWED_HOSTS", "").split(",") 
+DEBUG = os.environ.get("DEBUG", "True") == "True"
+ALLOWED_HOSTS = ['13.51.162.174', 'ec2-13-51-162-174.eu-north-1.compute.amazonaws.com', 'localhost', '127.0.0.1']
 SECRET_KEY = ENCRYPTION_KEY
 
 
@@ -195,6 +195,11 @@ CACHES = {
         }
     }
 }
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = []
 
 MEDIA_URL = '/media/'  # المسار للوصول للملفات
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # المجلد الفعلي لتخزين الملفات
