@@ -28,7 +28,7 @@ sudo apt install docker-ce
 # 9. التأكد إن الخدمة شغالة
 sudo systemctl status docker
 
-# 10. تحميل docker-compose (النسخة 1.28.5 كمثال)
+# 10. تحميل docker-compose 
 sudo curl -SL "$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep browser_download_url | grep $(uname -s)-$(uname -m) | cut -d '"' -f 4)" -o /usr/local/bin/docker-compose
 
 # 11. إعطاء صلاحيات تنفيذ لـ docker-compose
@@ -53,7 +53,6 @@ sudo apt install gunicorn
 ################## Nginx #######################
 
 gunicorn your_project_name.wsgi:application   # default>127.0.0.1:8000
-
 sudo nano /etc/nginx/sites-available/mysite
 	server {
   	  listen 80;

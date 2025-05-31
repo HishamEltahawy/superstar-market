@@ -206,7 +206,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # المجلد الفعلي لتخ
 
 # MEDIA_ROOT = ''  # المجلد الفعلي لتخزين الملفات
 # MEDIA_URL = ''  # المسار للوصول للملفات
-STATIC_URL = 'static/'
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
