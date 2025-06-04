@@ -1,0 +1,7 @@
+AccountsApp>>models.py>>line25
+code encrypted in lager than filed	done
+-----------------------------------------
+AccountsApp>>views.py>>line286
+resetpassword api
+
+-----------------------------------------

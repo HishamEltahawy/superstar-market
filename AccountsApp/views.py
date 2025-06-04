@@ -1,24 +1,22 @@
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
-from django.contrib.auth.models import User
-from django.contrib.auth.hashers import make_password
-from django.shortcuts import get_object_or_404
-from django.utils.crypto import get_random_string
-from django.core.mail import send_mail
-from datetime import datetime, timedelta
-from .serializers import SzSignup, SzUsers
 from rest_framework.views import APIView
-from ProductsApp.models import Products
-from django_ratelimit.decorators import ratelimit
+import logging
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.auth.models import User
+from .serializers import SzSignup, SzUsers
+from django.contrib.auth.hashers import make_password, check_password
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from django.utils.crypto import get_random_string
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import OutstandingToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
-import logging
+from rest_framework.decorators import api_view
+from datetime import datetime, timedelta
+from AccountsApp.tasks import send_email_task
 
 logger = logging.getLogger(__name__)
-
 
 
 class RegisterView(APIView):
@@ -34,8 +32,8 @@ class RegisterView(APIView):
                     email=data['email'],
                     password=make_password(data['password']),
                 )
-                # # Update the automatically created profile with user type
-                user_type = data.get('user_type', 'Customer')
+                # Update the automatically created profile with user type   
+                user_type = data.get('user_type', 'customer')
                 user.profile.user_type = user_type
                 user.profile.save()
                 
@@ -51,41 +49,42 @@ class LoginView(APIView):
         try:
             user = User.objects.get(email=data['email'])
         except User.DoesNotExist:
-            return Response({"error": "User is not signed up."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "User is not sign up."}, status=status.HTTP_404_NOT_FOUND)
 
-        if user:
-            profile = user.profile
-            if profile.two_factor_enabled:
-                # Generate temporary token with a 5-minute expiration
-                temp_token = AccessToken.for_user(user)
-                temp_token['2fa_verified'] = False  # Important! 2FA not verified yet
-                temp_token.set_exp(lifetime=timedelta(minutes=5))  # Set expiration to 5 minutes
-
-                # Generate a random 6-digit code
-                code = get_random_string(length=6, allowed_chars='0123456789')
-                profile.set_two_factor_code(code)  # Use the encryption method to set the code
-
-                # Send the code via email
-                send_mail(
-                    subject="Your 2FA Code",
-                    message=f"Your 2FA code is: {code}",
-                    from_email="hishameltahawy555@gmail.com",  # Sender Email
-                    recipient_list=[user.email],  # Receiver Email
-                )
-                
-                return Response({
-                    "message": "2FA verification required.",
-                    "temp_token": str(temp_token)
-                }, status=status.HTTP_200_OK)
-            else:
-                # If no 2FA required, issue normal token
-                refresh = RefreshToken.for_user(user)
-                return Response({
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token)
-                }, status=status.HTTP_200_OK)
-        else:
+        # Password check is missing here!
+        if not check_password(data['password'], user.password):
             return Response({"error": "Invalid email or password."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        profile = user.profile
+        if profile.two_factor_enabled:
+            # Generate temporary token with a 5-minute expiration
+            temp_token = AccessToken.for_user(user)
+            temp_token['2fa_verified'] = False  # Important! 2FA not verified yet
+            temp_token.set_exp(lifetime=timedelta(minutes=10))  # Set expiration to 10 minutes
+
+            # Generate a random 6-digit code
+            code = get_random_string(length=6, allowed_chars='0123456789')
+            profile.set_two_factor_code(code)  # Use the encryption method to set the code
+
+            # Send the code via email
+            send_mail(
+                subject="Your 2FA Code",
+                message=f"Your 2FA code is: {code}",
+                from_email="hishameltahawy555@gmail.com",  # Sender Email
+                recipient_list=[user.email],  # Receiver Email
+            )
+            
+            return Response({
+                "message": "2FA verification required.",
+                "temp_token": str(temp_token)
+            }, status=status.HTTP_200_OK)
+        else:
+            # If no 2FA required issue normal token
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token)
+            }, status=status.HTTP_200_OK)
 
 class Enable2FAView(APIView):
     permission_classes = [IsAuthenticated]
@@ -105,7 +104,7 @@ class Disable2FAView(APIView):
     def post(self, request):
         profile = request.user.profile
         if not profile.two_factor_enabled:
-            return Response({"error": "2FA is not enabled."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "2FA is already disable."}, status=status.HTTP_400_BAD_REQUEST)
 
         profile.two_factor_enabled = False
         profile.two_factor_code = None
@@ -118,7 +117,7 @@ class LogoutView(APIView):
         try:
             # Blacklist the refresh token
             refresh_token = request.data.get("refresh_token")
-            token = OutstandingToken.objects.get(token=refresh_token)
+            token = OutstandingToken.objects.get(token=refresh_token) # save tocken in a OutstandingToken table
             BlacklistedToken.objects.create(token=token)
             return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
         except  OutstandingToken:
@@ -126,48 +125,27 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# Generate  new code and send it to email
-class Request2FACodeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-        profile = request.user.profile
-
-        if not profile.two_factor_enabled:
-            return Response({"error": "2FA is not enabled."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Generate a random 6-digit code
-        code = get_random_string(length=6, allowed_chars='0123456789')
-        profile.set_two_factor_code(code)  # Use the encryption method to set the code
-
-        # Send the code via email using Celery task
-        from AccountsApp.tasks import send_email_task
-        
-        send_email_task.delay(
-            subject="Your 2FA Code",
-            message=f"Your 2FA code is: {code}",
-            from_email=None,  # Will use DEFAULT_FROM_EMAIL from settings
-            recipient_list=[request.user.email],
-        )
-
-        return Response({"message": "2FA code has been sent to your email."}, status=status.HTTP_200_OK)
-
 class Verify2FAView(APIView):
+    
     # @ratelimit(key='ip', rate='3/m', block=True)
     def post(self, request):
         code = request.data.get("code")
         temp_token = request.data.get("temp_token")
+        
         if not temp_token:
-            logger.error("Temporary token is missing in the request body.")
+            logger.error("logger>> Temporary token is missing in the request body.")
             return Response({"error": "Temporary token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
         try:
+            # encode in JWT trans to (STR)
+            # decode in JWT trans to (JSON)
             decoded_token = AccessToken(temp_token)
             user_id = decoded_token["user_id"]
             user = User.objects.get(id=user_id)
         except Exception as e:
             logger.error(f"Error decoding temp_token: {e}")
             return Response({"error": "Invalid or expired temporary token."}, status=status.HTTP_400_BAD_REQUEST)
+        
         profile = user.profile
         if not profile.two_factor_enabled:
             logger.warning(f"2FA is not enabled for user {user.username}.")
@@ -182,42 +160,105 @@ class Verify2FAView(APIView):
             return Response({"error": "Invalid 2FA code."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# Generate  new code and send it to email
+class Request2FACodeView(APIView):
+    permission_classes = [IsAuthenticated]
 
-@permission_classes([IsAuthenticated])
-@api_view(['GET'])
-def current_user(request):
-    user = request.user # Get the currently authenticated user
-    serializer = SzUsers(user)
-    return Response(serializer.data)
+    def post(self, request):
+        profile = request.user.profile # back object of profile
+
+        if not profile.two_factor_enabled:
+            return Response({"error": "2FA is not enabled."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Generate a random 6-digit code
+        code = get_random_string(length=6, allowed_chars='0123456789')
+        profile.set_two_factor_code(code)  # Use the encryption method to set the code
+
+        # Send the code via email using Celery task
+        send_email_task.delay(
+            subject="Your 2FA Code",
+            message=f"Your 2FA code is: {code}",
+            from_email=None,  # Will use DEFAULT_FROM_EMAIL from settings
+            recipient_list=[request.user.email],
+        )
+
+        return Response({"message": "2FA code has been sent to your email."}, status=status.HTTP_200_OK)
+
 
 class ForgetPassword(APIView):
-    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data= request.data    
+        user = get_object_or_404(User, email=data['email'])
+        
+        if user:
+            # Generate temporary token with a 5-minute expiration
+            temp_token = AccessToken.for_user(user)
+            temp_token['2fa_verified'] = False  # Important! 2FA not verified yet
+            temp_token.set_exp(lifetime=timedelta(minutes=5))  # Set expiration to 5 minutes
+            
+            # Generate a random 6-digit code
+            code = get_random_string(length=6, allowed_chars='0123456789')
+            user.profile.set_otp_code(code)
+            
+            send_email_task.delay(
+                subject="Your OTP Code",
+                message=f"Your OTP code is: {code}",
+                from_email=None,  # Will use DEFAULT_FROM_EMAIL from settings
+                recipient_list=[request.user.email],
+            )
+            return Response({
+                "message": "2FA verification required.",
+                "temp_token": str(temp_token)
+            }, status=status.HTTP_200_OK)
+                
+        else:
+            return Response({"error":"there is no email to send OTP code"})
+
+class VerifyOtp(APIView):
     
     def post(self, request):
-        data = request.data
-        user = data['username']
-        email = data['username']
-        user = data['username']
-        user = data['username']
+        code = request.data.get("otp_code")
+        temp_token = request.data.get("temp_token")
+       
+        if not temp_token:
+            logger.error("logger>> Temporary token is missing in the request body.")
+            return Response({"error": "Temporary token is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # encode in JWT trans to (STR)
+            # decode in JWT trans to (JSON)
+            decoded_token = AccessToken(temp_token)
+            user_id = decoded_token["user_id"]
+            user = User.objects.get(id=user_id)
+        except Exception as e:
+            logger.error(f"Error decoding temp_token: {e}")
+            return Response({"error": "Invalid or expired temporary token."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        profile = user.profile
+        if profile.verify_otp_code(code):
+             # Generate temporary token with a 5-minute expiration
+            temp_token = AccessToken.for_user(user)
+            temp_token['2fa_verified'] = False  # Important! 2FA not verified yet
+            temp_token.set_exp(lifetime=timedelta(minutes=5))  # Set expiration to 5 minutes
+            return Response({
+                "message": "2FA verification required.",
+                "temp_token": str(temp_token)
+            }, status=status.HTTP_200_OK)
 
-# Update user details
-@permission_classes([IsAuthenticated])
-@api_view(['PUT'])
-def update_user(request):
-    user = request.user
-    data = request.data
-
-    user.first_name = data['first_name']
-    user.last_name = data['last_name']
-    user.username = data['username']
-    user.email = data['email']
-
-    if data['password'] != "":
-        user.password = make_password(data['password'])
+class ChangePassword(APIView):
     
-    user.save()
-    serializer = SzUsers(user, many=False)
-    return Response(serializer.data)
+    def put(self, request):
+        
+        temp_token = request.data.get("temp_token")
+        new_password = request.data.get('new_password')
+        
+        decoded_token = AccessToken(temp_token)
+        user_id = decoded_token["user_id"]
+        user = User.objects.get(id=user_id)
+        
+        user.password = make_password(new_password)
+        
 
 class UpdateUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -233,33 +274,12 @@ class UpdateUserView(APIView):
 
         if data.get('password', "") != "":
             user.password = make_password(data['password'])
-
         user.save()
 
         serializer = SzUsers(user, many=False)
         return Response(serializer.data)
 
 
-
-def get_current_host(request):
-    protocol = request.is_secure() and 'https' or 'http'
-    host = request.get_host()
-    return '{protocol}://{host}/'.format(protocol=protocol, host = host)
-
-# Forget password
-@api_view(['POST'])
-def forget_password(request):
-    data = request.data
-    user = get_object_or_404(User, email=data['email'])
-    generate_token = get_random_string(40)
-    token_ex_date = datetime.now() + timedelta(minutes=30)
-    user.profile.new_token = generate_token
-    user.profile.ex_date = token_ex_date
-    user.profile.save()
-    link = f'http://127.0.0.1:8000/api/accounts/reset_password/{generate_token}'
-    body = f'Your password-reset link is {link}'
-    send_mail('Password reset from hisham', body, 'hishameltahawy555@gmail.com', [data['email']])
-    return Response({'details': f'Password reset link sent to email: {data["email"]}'})
 
 # Reset password
 @api_view(['POST'])

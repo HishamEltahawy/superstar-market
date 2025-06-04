@@ -11,7 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', Fernet.generate_key())
 DEBUG = os.environ.get("DEBUG", "True") == "True"
-ALLOWED_HOSTS = ['13.51.162.174', 'ec2-13-51-162-174.eu-north-1.compute.amazonaws.com', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 SECRET_KEY = ENCRYPTION_KEY
 
 
@@ -35,7 +35,7 @@ INSTALLED_APPS = [
     # Restful and Djoser
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',  # Add this line
+    'rest_framework_simplejwt.token_blacklist', 
     'rest_framework.authtoken',
     # 'djoser',
     'django_filters',
@@ -114,27 +114,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ProjectFiles.wsgi.application'
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get("DB_NAME"),
-        'USER': os.environ.get("DB_USER"),
-        'PASSWORD': os.environ.get("DB_PASSWORD"),
-        'HOST': os.environ.get("DB_HOST"),
-        'PORT': os.environ.get("DB_PORT", 5432),
-        
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get("DB_NAME"),
+#         'USER': os.environ.get("DB_USER"),
+#         'PASSWORD': os.environ.get("DB_PASSWORD"),
+#         'HOST': os.environ.get("DB_HOST"),
+#         'PORT': os.environ.get("DB_PORT", 5432),
+        
+#     }
+# }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -162,14 +160,31 @@ USE_I18N = True
 
 USE_TZ = True
 
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Redis Configuration
 REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
 REDIS_PORT = os.environ.get('REDIS_PORT', '6379')
 REDIS_URL = os.environ.get('REDIS_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}/1')
+
+# Using local memory cache since Redis is not installed
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# Redis Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
 
 # Celery Configuration
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', f'redis://{REDIS_HOST}:{REDIS_PORT}/0')
@@ -185,16 +200,6 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_CACHE_BACKEND = 'django-cache'
 
-# Redis Cache
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': REDIS_URL,
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
@@ -203,10 +208,6 @@ STATICFILES_DIRS = []
 
 MEDIA_URL = '/media/'  # المسار للوصول للملفات
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # المجلد الفعلي لتخزين الملفات
-
-# MEDIA_ROOT = ''  # المجلد الفعلي لتخزين الملفات
-# MEDIA_URL = ''  # المسار للوصول للملفات
-
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -224,21 +225,10 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    "TOKEN_BLACKLIST_ENABLED": True,
 }
 
-# DJOSER = {
-#     'USER_CREATE_PASSWORD_RETYPE': True,
-#     'SEND_ACTIVATION_EMAIL': False,
-#     'SEND_CONFIRMATION_EMAIL': False,
-
-# }
 
 
-# Using local memory cache since Redis is not installed
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
-    }
-}
-
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

@@ -1,4 +1,4 @@
-from django.urls import path, include
+from django.urls import path
 from . import views
 from .views import *
 
@@ -8,11 +8,14 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'), # register/   
     path('login/', LoginView.as_view(), name='login'), # login/                                                   
     path('logout/', LogoutView.as_view(), name='logout'), # logout/
+    
+    # APIs forget password system
+    path('forget-password/', ForgetPassword.as_view(), name='forgetPassword'), # forget-password/
+    path('verify-otp/', VerifyOtp.as_view(), name='verifyOtp'), # verify-otp/
+    path('change-password/', ChangePassword.as_view(), name='changePassword'), # change-password/
 
-    path('current_user/', views.current_user), # current_user/
-    path('update_user/', views.update_user), # update_user/
+
     path('update_user_view/', UpdateUserView.as_view, name='update_user_view'), # update_user/
-    path('forget_password/', views.forget_password), # forget_password/
     path('reset_password/<str:token>', views.reset_password), # reset_password/
     
  
